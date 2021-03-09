@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum State { IDLE, WALKING, CROUCHING, RUNNING }
+public enum State { IDLE, WALKING, CROUCHING, RUNNING, SLIDING }
 public class CustomCharacterController : MonoBehaviour
 {
     public State state;
@@ -10,11 +10,13 @@ public class CustomCharacterController : MonoBehaviour
     public float crouchHeight = 1f;
     public CharInfo info;
 
-
+    bool canInteract;
     CharacterInput characterInput;
     CharacterMovement characterMovement;
 
-    void ChangeState(State s)
+    List<MovementInterface> movements;
+
+    public void ChangeState(State s)
     {
         state = s;
     }
@@ -28,16 +30,39 @@ public class CustomCharacterController : MonoBehaviour
         info = new CharInfo(characterMovement.characterController.radius, characterMovement.characterController.height);
     }
 
+    public void AddMovementType(MovementInterface movement)
+    {
+        if (movements == null) movements = new List<MovementInterface>();
+        movement.SetPlayerComponents(characterMovement, characterInput);
+        movements.Add(movement);
+    }
+
     void Update()
     {
         //Updates
+        UpdateInteraction();
         UpdateMovingStatus();
 
         //Checks
         CheckCrouching();
+        foreach (MovementInterface moveType in movements)
+        {
+            if (moveType.enabled)
+                moveType.Check(canInteract);
+        }
+
     }
 
-    
+    void UpdateInteraction()
+    {
+        if ((int)state >= 5)
+            canInteract = false;
+        else if (!canInteract)
+        {
+            if (characterMovement.grounded || characterMovement.moveDirection.y < 0)
+                canInteract = true;
+        }
+    }
 
     void UpdateMovingStatus()
     {
@@ -62,6 +87,14 @@ public class CustomCharacterController : MonoBehaviour
 
     private void FixedUpdate()
     {
+        foreach (MovementInterface moveType in movements)
+        {
+            if (state == moveType.changeTo)
+            {
+                moveType.Movement();
+                return;
+            }
+        }
 
         NormalMove();
     }

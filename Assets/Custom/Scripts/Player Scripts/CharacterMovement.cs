@@ -16,7 +16,7 @@ public class CharacterMovement : InterpolateTransform
 
     [SerializeField]
     private float antiBumpFactor = .75f;
-
+    
     [HideInInspector]
     public Vector3 moveDirection = Vector3.zero;
 
@@ -26,7 +26,15 @@ public class CharacterMovement : InterpolateTransform
     Vector3 jumpedDir;
 
     [SerializeField]
-    private float currentMoveSpeed = 0f;
+    private float currentMoveSpeed = 3f;
+    [SerializeField]
+    private float targetMoveSpeed = 3f;
+    [SerializeField]
+    private float accelerationFactor = .55f;
+    [SerializeField]
+    private float speedDecayMult = 3f;      //how much faster slowdown happens
+    [SerializeField]
+    private float maxSlideSpeed = 14f;     
 
     public CharacterController characterController;
     UnityEvent onReset = new UnityEvent();
@@ -82,9 +90,15 @@ public class CharacterMovement : InterpolateTransform
 
     public void Move(Vector2 input, bool sprint, bool crouching)
     {
+        targetMoveSpeed = sprint ? Mathf.Max(targetMoveSpeed, runSpeed) : walkSpeed;    //being in sprint mode should only speed the player up, the player can slow down if walking tho
+        if (crouching) targetMoveSpeed = crouchSpeed;
+        if (characterController.velocity.magnitude < 0.001f) targetMoveSpeed = crouchSpeed; //if not moving try decelerate to crouch speed
 
-        currentMoveSpeed = sprint ? runSpeed : walkSpeed;        //if sprinting use run speed
-        if (crouching) currentMoveSpeed = crouchSpeed;
+        var accelAmount = (targetMoveSpeed - currentMoveSpeed) * (accelerationFactor * Time.deltaTime);
+        if (accelAmount > 0)
+            currentMoveSpeed += accelAmount;   //apply acceleration curve
+        else
+            currentMoveSpeed += accelAmount* speedDecayMult; //slow down faster than accelerate
 
         if (grounded)
         {
@@ -106,6 +120,38 @@ public class CharacterMovement : InterpolateTransform
         moveDirection.y -= gravity * Time.deltaTime;
         //move + update grounded state
         grounded = (characterController.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
+    }
+
+    public void Move(Vector3 direction, float appliedGravity, float setY)
+    {
+        //add a burst of speed after sliding
+        currentMoveSpeed = targetMoveSpeed;
+
+        Vector3 move = direction * currentMoveSpeed; 
+        if (appliedGravity > 0)
+        {
+            moveDirection.x = move.x;
+            if (setY != 0) moveDirection.y = setY * currentMoveSpeed;
+            moveDirection.y -= gravity * Time.deltaTime * appliedGravity;
+            moveDirection.z = move.z;
+        }
+        else
+            moveDirection = move;
+
+        UpdateJump();
+
+        grounded = (characterController.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
+    }
+
+    public void SpeedBoost(float boostAmount)
+    {
+        targetMoveSpeed = Mathf.Min(maxSlideSpeed, currentMoveSpeed + boostAmount);
+    }
+
+    public void CollisionSlow()
+    {
+        targetMoveSpeed = walkSpeed;
+        currentMoveSpeed = targetMoveSpeed;
     }
 
     public void Jump(Vector3 dir, float mult)
@@ -132,5 +178,9 @@ public class CharacterMovement : InterpolateTransform
         jump = Vector3.zero;
     }
 
+    public float GetCurrentMovementSpeed()
+    {
+        return currentMoveSpeed;
+    }
     
 }

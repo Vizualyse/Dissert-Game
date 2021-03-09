@@ -11,7 +11,7 @@ public class CharacterInput : MonoBehaviour
             Vector2 i = Vector2.zero;
             i.x = Input.GetAxis("Horizontal");
             i.y = Input.GetAxis("Vertical");
-            i *= (i.x != 0.0f && i.y != 0.0f) ? .71f : 1.0f;
+            i *= (i.x != 0.0f && i.y != 0.0f) ? .7f : 1.0f; //add strafe penalties
             return i;
         }
     }
@@ -27,8 +27,13 @@ public class CharacterInput : MonoBehaviour
     {
         get
         {
-            return Input.GetButtonDown("Crouch");     //make get ax
+            return Input.GetButtonDown("Crouch");     
         }
+    }
+
+    public bool crouching
+    {
+        get { return Input.GetButton("Crouch"); }
     }
 
     private int jumpTimer;
