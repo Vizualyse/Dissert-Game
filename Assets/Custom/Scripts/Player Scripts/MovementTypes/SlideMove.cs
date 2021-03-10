@@ -16,6 +16,7 @@ public class SlideMove : MovementInterface
     [SerializeField]
     float slideBoostAmount = 3f;
 
+    [SerializeField]
     Vector3 slideDir;
 
     bool canSlide()
@@ -42,33 +43,23 @@ public class SlideMove : MovementInterface
             }
         }
 
+
         movement.Move(slideDir, 1f, slideDir.y);
     }
 
     public override void Check(bool canInteract)
     {
         if (!canInteract) return;
-        if (Physics.Raycast(transform.position, -Vector3.up, out var hit, player.info.rayDistance, player.collisionLayer)) //Don't hit the player
+
+        //Unslide
+        if (playerInput.crouch && player.state == State.SLIDING)   
         {
-            float angle = Vector3.Angle(hit.normal, Vector3.up);
-            Vector3 hitNormal = hit.normal;
-
-            Vector3 slopeDir = Vector3.ClampMagnitude(new Vector3(hitNormal.x, -hitNormal.y, hitNormal.z), 1f);
-            Vector3.OrthoNormalize(ref hitNormal, ref slopeDir);
-
-            if (angle > 0 && playerState == changeTo) //Adjust to slope direction
+            if (player.Uncrouch())
             {
-                Debug.DrawRay(transform.position - Vector3.up * player.info.halfheight, slideDir, Color.green);
-                slideDir = Vector3.RotateTowards(slideDir, slopeDir, slideSpeed.min * Time.deltaTime / 2f, 0.0f);
+                slideTime = 0;
+                player.ChangeState(State.RUNNING);
+                return;
             }
-            else
-                slideDir.y = 0;
-        }
-        else if (playerState == changeTo)
-        {
-            slideDir.y = 0;
-            slideDir = slideDir.normalized;
-            slideDownward = 0f;
         }
 
         //Check to slide when running
@@ -79,7 +70,7 @@ public class SlideMove : MovementInterface
             slideDir = transform.forward;
             movement.characterController.height = player.crouchHeight;
             slideDownward = 0f;
-            slideTime = 1f;
+            slideTime = 4f;
         }
 
         //Lower slidetime

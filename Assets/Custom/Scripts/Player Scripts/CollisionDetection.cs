@@ -5,23 +5,28 @@ using UnityEngine;
 public class CollisionDetection : MonoBehaviour
 {
     CharacterMovement movement;
-    Vector3 contactPoint;
     public void Start()
     {
         movement = this.GetComponentInParent<CharacterMovement>();
     }
 
+
     public void OnTriggerEnter(Collider other)
     {
-        contactPoint = other.ClosestPoint(this.transform.parent.transform.position);
-        //calculate a percentage slow based on the players angle on collision
-        //if they're facing 0° from it 100% slow
-        //if they're facing 90° from it 0% slow
-        //linear in between
-        //penalty for running into objects
+        Vector3 playerPoint = this.transform.position;
+        Vector3 contactVector = other.ClosestPoint(playerPoint);
+        Vector3 forward = this.transform.forward;
+
+        Vector3 towardsOther = contactVector - playerPoint;
+        float angle = Vector3.Angle(forward, towardsOther);     //collision angle 0° is direct collision
+        float percentage = angle / 180;
+        percentage = 1 - percentage;
+
+        //Debug.Log(other.transform.name + " " + percentage);
+
         if (!other.gameObject.name.Equals("Player"))
         {
-            movement.CollisionSlow();
+            movement.CollisionSlow(percentage);
         }
     }
 }
