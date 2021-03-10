@@ -9,13 +9,11 @@ public class MovementInterface : MonoBehaviour
     protected CustomCharacterController player;
     protected CharacterMovement movement;
     protected CharacterInput playerInput;
-    protected State playerState;
 
     public virtual void Start()
     {
         player = GetComponent<CustomCharacterController>();
         player.AddMovementType(this);
-        player.ChangeState(playerState);
     }
 
     public virtual void SetPlayerComponents(CharacterMovement move, CharacterInput input)

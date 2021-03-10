@@ -7,11 +7,6 @@ public class SlideMove : MovementInterface
     public FloatRange slideSpeed = new FloatRange(7.0f, 12.0f);
 
     [SerializeField]
-    float slideTime;
-    float slideBlendTime = 0.222f;
-    float slideDownward = 0f;
-
-    [SerializeField]
     float minSlideSpeed = 5.0f;
     [SerializeField]
     float slideBoostAmount = 3f;
@@ -19,9 +14,11 @@ public class SlideMove : MovementInterface
     [SerializeField]
     Vector3 slideDir;
 
+    bool slideOnLand = false;
+
     bool canSlide()
     {
-        if (slideTime > 0 || playerState == changeTo) return false;
+        if (player.state == changeTo || !playerInput.run || !movement.grounded) return false;
         if (movement.GetCurrentMovementSpeed() < minSlideSpeed) return false;
         return true;
     }
@@ -35,72 +32,53 @@ public class SlideMove : MovementInterface
         if (movement.grounded && playerInput.Jump())
         {
             slideDir = transform.forward;
-            if (player.Uncrouch()) { 
+            if (player.Uncrouch())
+            {
                 movement.Jump(slideDir + Vector3.up, 1f);
                 playerInput.ResetJump();
-                slideTime = 0;
                 player.ChangeState(State.RUNNING);
             }
         }
 
 
-        movement.Move(slideDir, 1f, slideDir.y);
+        //movement.Move(slideDir, 1f, slideDir.y);      //locked slide
+        movement.Move(transform.TransformDirection(new Vector3(playerInput.input.x * 0.1f, 0, playerInput.input.y)), 1f, slideDir.y);
     }
 
     public override void Check(bool canInteract)
     {
         if (!canInteract) return;
 
+        //Start sliding on landing
+        if (!movement.grounded && playerInput.crouch)
+        {
+            slideOnLand = true;
+        }
+
         //Unslide
-        if (playerInput.crouch && player.state == State.SLIDING)   
+        if (playerInput.crouch && player.state == State.SLIDING)
         {
             if (player.Uncrouch())
             {
-                slideTime = 0;
                 player.ChangeState(State.RUNNING);
                 return;
             }
         }
 
         //Check to slide when running
-        if (playerInput.crouch && canSlide())
+        if ((playerInput.crouch && canSlide()) || (slideOnLand && canSlide()))
         {
+            slideOnLand = false;
             movement.SpeedBoost(slideBoostAmount);
             player.ChangeState(changeTo);
             slideDir = transform.forward;
             movement.characterController.height = player.crouchHeight;
-            slideDownward = 0f;
-            slideTime = 4f;
         }
 
-        //Lower slidetime
-        if (slideTime > 0)
-        {
-            if (slideDir.y < 0)
-            {
-                slideDownward = Mathf.Clamp(slideDownward + Time.deltaTime * Mathf.Sqrt(Mathf.Abs(slideDir.y)), 0f, 1f);
-                if (slideTime <= slideBlendTime)
-                    slideTime += Time.deltaTime;
-            }
-            else
-            {
-                slideDownward = Mathf.Clamp(slideDownward - Time.deltaTime, 0f, 1f);
-                slideTime -= Time.deltaTime;
-            }
 
-            if (slideTime <= slideBlendTime)
-            {
-                
-                if (player.ShouldSprint() && player.Uncrouch())
-                    player.ChangeState(State.RUNNING);
-
-                if (!player.ShouldSprint() && player.Uncrouch())
-                    player.ChangeState(State.WALKING);
-            }
-        }
-        else if (playerState == changeTo)   //FIX
+        if (movement.GetCurrentMovementSpeed() <= minSlideSpeed && player.state == changeTo)
         {
-            if (playerInput.crouching)
+            if (playerInput.crouching)  //if the player is trying to stay crouched, don't uncrouch
             {
                 player.Crouch(true);
                 player.ChangeState(State.CROUCHING);
@@ -109,6 +87,10 @@ public class SlideMove : MovementInterface
             {
                 player.Crouch(true); //So just keep crouched
                 player.ChangeState(State.CROUCHING);
+            }
+            else
+            {
+                player.ChangeState(State.RUNNING);
             }
         }
     }

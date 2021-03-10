@@ -131,7 +131,7 @@ public class CharacterMovement : InterpolateTransform
         else { 
             if(YPos > lastYPos)    //moving uphill
             {
-                targetMoveSpeed -= slideAccel * Time.deltaTime;
+                targetMoveSpeed -= slideAccel * 4 * Time.deltaTime;
                 targetMoveSpeed = Mathf.Min(targetMoveSpeed, maxSlideSpeed);
                 //Debug.Log("uphill");
             }
@@ -193,12 +193,15 @@ public class CharacterMovement : InterpolateTransform
         UpdateJump();
 
         grounded = (characterController.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
+
+        if (characterController.velocity.magnitude < 2f) targetMoveSpeed = crouchSpeed; //if sliding too slow stop player
     }
 
     public void SpeedBoost(float boostAmount)
     {
         if(targetMoveSpeed < maxSlideBoostSpeed)
             targetMoveSpeed = Mathf.Min(maxSlideBoostSpeed, currentMoveSpeed + boostAmount);
+        
     }
 
     public void CollisionSlow(float percentage)
