@@ -5,6 +5,8 @@ using UnityEngine;
 public class CollisionDetection : MonoBehaviour
 {
     CharacterMovement movement;
+    
+    public bool active = true;
     public void Start()
     {
         movement = this.GetComponentInParent<CharacterMovement>();
@@ -25,8 +27,8 @@ public class CollisionDetection : MonoBehaviour
         //Debug.Log(other.transform.name + " " + percentage);
 
         if (!other.gameObject.name.Equals("Player"))
-        {
-            movement.CollisionSlow(percentage);
-        }
+            if(active)
+                movement.CollisionSlow(percentage);
+        
     }
 }

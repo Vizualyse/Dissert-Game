@@ -42,7 +42,7 @@ public class SlideMove : MovementInterface
 
 
         //movement.Move(slideDir, 1f, slideDir.y);      //locked slide
-        movement.Move(transform.TransformDirection(new Vector3(playerInput.input.x * 0.1f, 0, playerInput.input.y)), 1f, slideDir.y);
+        movement.Move(transform.TransformDirection(new Vector3(playerInput.input.x * 0.1f, 0, playerInput.input.y)), 1f);
     }
 
     public override void Check(bool canInteract)

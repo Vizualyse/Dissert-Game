@@ -36,10 +36,13 @@ public class CharacterMovement : InterpolateTransform
     [SerializeField]
     private float slideAccel = 0.4f;
     [SerializeField]
+    private float wallAccel = 3f;
+    [SerializeField]
     private float minColSlowAngle = 0.5f;
 
     [Header("Game Objets")]
     public CharacterController characterController;
+    CustomCharacterController controller;
     UnityEvent onReset = new UnityEvent();
 
     [Header("Debug")]
@@ -77,6 +80,7 @@ public class CharacterMovement : InterpolateTransform
     {
         base.OnEnable();
         characterController = GetComponent<CharacterController>();
+        controller = GetComponent<CustomCharacterController>();
     }
 
     private void Awake()
@@ -104,7 +108,7 @@ public class CharacterMovement : InterpolateTransform
     {
         targetMoveSpeed = sprint ? Mathf.Max(targetMoveSpeed, runSpeed) : walkSpeed;    //being in sprint mode should only speed the player up, the player can slow down if walking tho
         if (crouching) targetMoveSpeed = crouchSpeed;
-        if (characterController.velocity.magnitude < 0.001f) targetMoveSpeed = crouchSpeed; //if not moving try decelerate to crouch speed
+        if (controller.speed < 2f) targetMoveSpeed = crouchSpeed; //if not moving try decelerate to crouch speed
 
         var accelAmount = (targetMoveSpeed - currentMoveSpeed) * (accelerationFactor * Time.deltaTime);
         if (accelAmount > 0)
@@ -173,7 +177,7 @@ public class CharacterMovement : InterpolateTransform
     }
 
     //slide movement
-    public void Move(Vector3 direction, float appliedGravity, float setY)
+    public void Move(Vector3 direction, float appliedGravity)
     {
         updateSlideSpeed();
         //add a burst of speed after sliding
@@ -182,8 +186,7 @@ public class CharacterMovement : InterpolateTransform
         Vector3 move = direction * currentMoveSpeed; 
         if (appliedGravity > 0)
         {
-            moveDirection.x = move.x;
-            if (setY != 0) moveDirection.y = setY * currentMoveSpeed;
+            moveDirection.x = move.x; 
             moveDirection.y -= gravity * Time.deltaTime * appliedGravity;
             moveDirection.z = move.z;
         }
@@ -194,7 +197,19 @@ public class CharacterMovement : InterpolateTransform
 
         grounded = (characterController.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
 
-        if (characterController.velocity.magnitude < 2f) targetMoveSpeed = crouchSpeed; //if sliding too slow stop player
+        if (controller.speed < 2f) targetMoveSpeed = crouchSpeed; //if sliding too slow stop player
+    }
+
+    //wallrun movement
+    public void Move(Vector3 direction, Camera camera)
+    {
+        targetMoveSpeed += camera.transform.localRotation.x * wallAccel *Time.deltaTime;
+        currentMoveSpeed = targetMoveSpeed;
+        moveDirection = direction * currentMoveSpeed;
+        UpdateJump();
+
+        grounded = (characterController.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
+
     }
 
     public void SpeedBoost(float boostAmount)
