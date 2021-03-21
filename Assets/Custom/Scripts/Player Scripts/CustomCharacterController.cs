@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum State { IDLE, WALKING, CROUCHING, RUNNING, SLIDING, WALLRUN }
+public enum State { IDLE, WALKING, CROUCHING, RUNNING, SLIDING, WALLRUN, DISMOUNTING, VAULTING }
 public class CustomCharacterController : MonoBehaviour
 {
     public State state;
@@ -22,6 +22,7 @@ public class CustomCharacterController : MonoBehaviour
     public float speed = 0f;
 
     CollisionDetection collisionDetection;
+    public bool debugDraw = false;
 
 
     public void ChangeState(State s)
@@ -99,6 +100,11 @@ public class CustomCharacterController : MonoBehaviour
     private void FixedUpdate()
     {
         UpdateSpeed();
+
+        if (state == State.VAULTING)
+            collisionDetection.active = false;
+        else
+            collisionDetection.active = true;
 
         foreach (MovementInterface moveType in movements)
         {
@@ -202,54 +208,46 @@ public class CustomCharacterController : MonoBehaviour
             speedCounter++;
     }
 
-    /*
-     * used to test the contact points for wall running
-    private void OnDrawGizmos()
+    private void getWallContactPoints(int dir, out Vector3 side, out Vector3 topForward, out Vector3 topBackward, out Vector3 bottomForward, out Vector3 bottomBackward)
     {
-        Gizmos.DrawCube(side, Vector3.one*0.1f);
-        Gizmos.DrawCube(top, Vector3.one * 0.1f);
-        Gizmos.DrawCube(topForward, Vector3.one * 0.1f);
-        Gizmos.DrawCube(topBackward, Vector3.one * 0.1f);
-        Gizmos.DrawCube(bottom, Vector3.one * 0.1f);
-        Gizmos.DrawCube(bottomForward, Vector3.one * 0.1f);
-        Gizmos.DrawCube(bottomBackward, Vector3.one * 0.1f);
+        side = transform.position + (transform.right * info.radius * dir);
+        Vector3 top = side + (transform.up * info.halfheight);
+        topForward = top + (transform.forward * info.radius);
+        topBackward = top - (transform.forward * info.radius);
+        Vector3 bottom = side - (transform.up * info.halfheight);
+        bottomForward = bottom + (transform.forward * info.radius);
+        bottomBackward = bottom - (transform.forward * info.radius);
     }
-    */
+
     public bool hasWallToSide(int dir)
     {
-        Vector3 side = transform.position + (transform.right * info.radius * dir);
-        Vector3 top = side + (transform.up * info.halfheight);
-        Vector3 topForward = top + (transform.forward * info.radius);
-        Vector3 topBackward = top - (transform.forward * info.radius);
-        Vector3 bottom = side - (transform.up * info.halfheight);
-        Vector3 bottomForward = bottom + (transform.forward * info.radius);
-        Vector3 bottomBackward = bottom - (transform.forward * info.radius);
+        getWallContactPoints(dir, out Vector3 side, out Vector3 topForward, out Vector3 topBackward, out Vector3 bottomForward, out Vector3 bottomBackward);
 
         List<RaycastHit> raycasts = new List<RaycastHit>();
         List<RaycastHit> temp = new List<RaycastHit>();
 
         //to reduce computation the middle ray cast is tested alone first
-        foreach (RaycastHit ray in raysWithoutPlayer(Physics.RaycastAll(side, transform.right * dir, 0.5f)))
+        foreach (RaycastHit ray in raysWithoutPlayer(Physics.RaycastAll(side, transform.right * dir, 0.6f)))
             raycasts.Add(ray);
 
         if (raycasts.Count == 0) return false;  //middle raycast not hit, not valid wall
 
-        temp.AddRange(Physics.RaycastAll(topForward, transform.right * dir, 0.3f));
+        temp.AddRange(Physics.RaycastAll(topForward, transform.right * dir, 0.4f));
         if(temp.Count >= 1) //collision in the top front
         {
             int tempCount = temp.Count;
-            temp.AddRange(raysWithoutPlayer(Physics.RaycastAll(bottomForward, transform.right * dir, 0.3f)));
-            temp.AddRange(raysWithoutPlayer(Physics.RaycastAll(bottomBackward, transform.right * dir, 0.3f)));
+            temp.AddRange(raysWithoutPlayer(Physics.RaycastAll(bottomForward, transform.right * dir, 0.4f)));
+            temp.AddRange(raysWithoutPlayer(Physics.RaycastAll(bottomBackward, transform.right * dir, 0.4f)));
             if(temp.Count > tempCount)      //if at least 1 more raycast is added add it to the list
                 raycasts.AddRange(temp);
         }
         temp.Clear(); 
-        temp.AddRange(Physics.RaycastAll(topBackward, transform.right * dir, 0.3f));
+        temp.AddRange(Physics.RaycastAll(topBackward, transform.right * dir, 0.4f));
         if (raycasts.Count < 3 && temp.Count >= 1) //collision in the top back, if front already has 3 raycasts skip this
         {
             int tempCount = temp.Count;
-            temp.AddRange(raysWithoutPlayer(Physics.RaycastAll(bottomForward, transform.right * dir, 0.3f)));
-            temp.AddRange(raysWithoutPlayer(Physics.RaycastAll(bottomBackward, transform.right * dir, 0.3f)));
+            temp.AddRange(raysWithoutPlayer(Physics.RaycastAll(bottomForward, transform.right * dir, 0.4f)));
+            temp.AddRange(raysWithoutPlayer(Physics.RaycastAll(bottomBackward, transform.right * dir, 0.4f)));
             if (temp.Count > tempCount)     //if at least 1 more raycast is added add it to the list
                 raycasts.AddRange(temp);
         }
@@ -289,6 +287,22 @@ public class CustomCharacterController : MonoBehaviour
         }
 
         return rays;
+    }
+
+    //used to test the contact points for wall running
+    private void OnDrawGizmos()
+    {
+        if (debugDraw)
+        {
+            int dir = 1;    //1 for right -1 for left
+            getWallContactPoints(dir, out Vector3 side, out Vector3 topForward, out Vector3 topBackward, out Vector3 bottomForward, out Vector3 bottomBackward);
+            Gizmos.DrawCube(side, Vector3.one * 0.1f);
+            Gizmos.DrawCube(topForward, Vector3.one * 0.1f);
+            Gizmos.DrawCube(topBackward, Vector3.one * 0.1f);
+            Gizmos.DrawCube(bottomForward, Vector3.one * 0.1f);
+            Gizmos.DrawCube(bottomBackward, Vector3.one * 0.1f);
+        }
+
     }
 }
 

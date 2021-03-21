@@ -45,8 +45,10 @@ public class WallRun : MovementInterface
             playerInput.ResetJump();
             player.ChangeState(State.WALKING);
         }
+        if(player.state == changeTo && !player.hasWallToSide(wallDir))
+            player.ChangeState(State.DISMOUNTING);
 
-        if (!player.hasWallToSide(wallDir) || movement.grounded || player.speed < minSpeed || !playerInput.run)
+        if (movement.grounded || player.speed < minSpeed || !playerInput.run)
             player.ChangeState(State.WALKING);
 
         movement.Move(move, camera);

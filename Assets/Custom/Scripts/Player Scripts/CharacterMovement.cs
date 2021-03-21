@@ -30,7 +30,7 @@ public class CharacterMovement : InterpolateTransform
     [SerializeField]
     private float speedDecayMult = 3f;      //how much faster slowdown happens
     [SerializeField]
-    private float maxSlideBoostSpeed = 14f;     //max boost speed you can get from sliding
+    public float maxSlideBoostSpeed = 14f;     //max boost speed you can get from sliding
     [SerializeField]
     private float maxSlideSpeed = 17f;          //max speed you can get by sliding downhill
     [SerializeField]
@@ -99,9 +99,84 @@ public class CharacterMovement : InterpolateTransform
         characterController.Move(adjust);
     }
 
-    public override void FixedUpdate()
+    //defualt moving + air movement
+    public void Move(Vector2 input, bool sprint, bool crouching)
+    {   
+        if (grounded)
+        {
+            updateMoveSpeed(sprint, crouching);     //only accelerate or decelerate when grounded
+            moveDirection = new Vector3(input.x, -antiBumpFactor, input.y);      //anti bump factor stops the player slowing down when they hit ledges
+            moveDirection = transform.TransformDirection(moveDirection) * currentMoveSpeed;
+            UpdateJump();
+        }
+        else           //in air controls
+        {
+            Vector3 adjust = new Vector3(input.x, 0, input.y);
+            adjust = transform.TransformDirection(adjust);
+            jumpedDir += adjust * Time.fixedDeltaTime * jumpPower * 2f;
+            jumpedDir = Vector3.ClampMagnitude(jumpedDir, jumpPower);
+            moveDirection.x = jumpedDir.x;
+            moveDirection.z = jumpedDir.z;
+        }
+        //add gravity
+        moveDirection.y -= gravity * Time.deltaTime;
+        //move + update grounded state
+        grounded = (characterController.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
+    }
+
+    //slide movement
+    public void Move(Vector3 direction)
     {
-        
+        updateSlideSpeed();
+        //add a burst of speed after sliding
+        currentMoveSpeed = targetMoveSpeed;
+
+        Vector3 move = direction * currentMoveSpeed; 
+        moveDirection.x = move.x; 
+        moveDirection.y -= gravity * Time.deltaTime;
+        moveDirection.z = move.z;
+
+        UpdateJump();
+        grounded = (characterController.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
+
+        if (controller.speed < 2f) targetMoveSpeed = crouchSpeed; //if sliding too slow stop player
+    }
+
+    //wallrun movement
+    public void Move(Vector3 direction, Camera camera)
+    {
+        if(camera.transform.localRotation.x < 0) //going upwards
+            targetMoveSpeed += camera.transform.localRotation.x * speedDecayMult * wallAccel * Time.deltaTime;
+        else
+            targetMoveSpeed += camera.transform.localRotation.x * wallAccel * Time.deltaTime;
+
+        currentMoveSpeed = targetMoveSpeed;
+        moveDirection = direction * currentMoveSpeed;
+        UpdateJump();
+
+        grounded = (characterController.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
+
+    }
+    //dismount move
+    public void Move(Vector2 input)
+    {
+        moveDirection = new Vector3(input.x, -antiBumpFactor, input.y);      
+        moveDirection = transform.TransformDirection(moveDirection) * (targetMoveSpeed + 2f);
+        moveDirection.y -= gravity * Time.deltaTime;
+
+        //move + update grounded state
+        grounded = (characterController.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
+    }
+    //vault
+    public void Move(Vector3 direction, bool slow)
+    {
+        if (slow)
+        { 
+            targetMoveSpeed = runSpeed;
+            currentMoveSpeed = targetMoveSpeed;
+        }
+        moveDirection = direction * (currentMoveSpeed + 2f);
+        grounded = (characterController.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
     }
 
     public void updateMoveSpeed(bool sprint, bool crouching)
@@ -132,10 +207,11 @@ public class CharacterMovement : InterpolateTransform
             targetMoveSpeed = Mathf.Min(targetMoveSpeed, maxSlideSpeed);
             //Debug.Log("flat");
         }
-        else { 
-            if(YPos > lastYPos)    //moving uphill
+        else
+        {
+            if (YPos > lastYPos)    //moving uphill
             {
-                targetMoveSpeed -= slideAccel * 4 * Time.deltaTime;
+                targetMoveSpeed -= slideAccel * speedDecayMult * Time.deltaTime;
                 targetMoveSpeed = Mathf.Min(targetMoveSpeed, maxSlideSpeed);
                 //Debug.Log("uphill");
             }
@@ -148,68 +224,6 @@ public class CharacterMovement : InterpolateTransform
         }
 
         lastYPos = YPos;
-    }
-
-    //defualt moving + air movement
-    public void Move(Vector2 input, bool sprint, bool crouching)
-    {   
-        if (grounded)
-        {
-            updateMoveSpeed(sprint, crouching);     //only accelerate or decelerate when grounded
-            moveDirection = new Vector3(input.x, -antiBumpFactor, input.y);      //anti bump factor stops the player slowing down when they hit ledges
-            moveDirection = transform.TransformDirection(moveDirection) * currentMoveSpeed;
-            UpdateJump();
-        }
-        else           //in air controls
-        {
-            Vector3 adjust = new Vector3(input.x, 0, input.y);
-            adjust = transform.TransformDirection(adjust);
-            jumpedDir += adjust * Time.fixedDeltaTime * jumpPower * 2f;
-            jumpedDir = Vector3.ClampMagnitude(jumpedDir, jumpPower);
-            moveDirection.x = jumpedDir.x;
-            moveDirection.z = jumpedDir.z;
-        }
-
-        //add gravity
-        moveDirection.y -= gravity * Time.deltaTime;
-        //move + update grounded state
-        grounded = (characterController.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
-    }
-
-    //slide movement
-    public void Move(Vector3 direction, float appliedGravity)
-    {
-        updateSlideSpeed();
-        //add a burst of speed after sliding
-        currentMoveSpeed = targetMoveSpeed;
-
-        Vector3 move = direction * currentMoveSpeed; 
-        if (appliedGravity > 0)
-        {
-            moveDirection.x = move.x; 
-            moveDirection.y -= gravity * Time.deltaTime * appliedGravity;
-            moveDirection.z = move.z;
-        }
-        else
-            moveDirection = move;
-
-        UpdateJump();
-
-        grounded = (characterController.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
-
-        if (controller.speed < 2f) targetMoveSpeed = crouchSpeed; //if sliding too slow stop player
-    }
-
-    //wallrun movement
-    public void Move(Vector3 direction, Camera camera)
-    {
-        targetMoveSpeed += camera.transform.localRotation.x * wallAccel *Time.deltaTime;
-        currentMoveSpeed = targetMoveSpeed;
-        moveDirection = direction * currentMoveSpeed;
-        UpdateJump();
-
-        grounded = (characterController.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
-
     }
 
     public void SpeedBoost(float boostAmount)

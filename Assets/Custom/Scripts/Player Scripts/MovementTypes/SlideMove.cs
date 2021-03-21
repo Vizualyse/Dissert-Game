@@ -42,7 +42,7 @@ public class SlideMove : MovementInterface
 
 
         //movement.Move(slideDir, 1f, slideDir.y);      //locked slide
-        movement.Move(transform.TransformDirection(new Vector3(playerInput.input.x * 0.1f, 0, playerInput.input.y)), 1f);
+        movement.Move(transform.TransformDirection(new Vector3(playerInput.input.x * 0.1f, 0, playerInput.input.y)));
     }
 
     public override void Check(bool canInteract)
@@ -60,6 +60,7 @@ public class SlideMove : MovementInterface
         {
             if (player.Uncrouch())
             {
+                movement.SpeedBoost(-slideBoostAmount);
                 player.ChangeState(State.RUNNING);
                 return;
             }
@@ -69,6 +70,7 @@ public class SlideMove : MovementInterface
         if ((playerInput.crouch && canSlide()) || (slideOnLand && canSlide()))
         {
             slideOnLand = false;
+
             movement.SpeedBoost(slideBoostAmount);
             player.ChangeState(changeTo);
             slideDir = transform.forward;
