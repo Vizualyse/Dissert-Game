@@ -25,6 +25,7 @@ public class CharacterMovement : InterpolateTransform
     public float walkSpeed = 4.0f;
     public float runSpeed = 8.0f;
     public float crouchSpeed = 2.0f;
+    public float grappleSpeed = 1.75f;
     [SerializeField]
     private float accelerationFactor = .55f;
     [SerializeField]
@@ -40,6 +41,8 @@ public class CharacterMovement : InterpolateTransform
     [SerializeField]
     private float minColSlowAngle = 0.5f;
 
+    public float wallJumpDistance = 0.5f;
+
     [Header("Game Objets")]
     public CharacterController characterController;
     CustomCharacterController controller;
@@ -53,6 +56,8 @@ public class CharacterMovement : InterpolateTransform
 
     private float YPos = 0f;
     private float lastYPos = 0f;
+
+    public float cumulativeGravity = 0f;
 
     public void AddToReset(UnityAction call)
     {
@@ -96,7 +101,8 @@ public class CharacterMovement : InterpolateTransform
         Vector3 adjust = Vector3.Lerp(olderTransform, newestTransform, InterpolationControl.InterpolationFactor);
         adjust -= transform.position;
 
-        characterController.Move(adjust);
+        if(characterController.enabled)
+            characterController.Move(adjust);
     }
 
     //defualt moving + air movement
@@ -105,8 +111,9 @@ public class CharacterMovement : InterpolateTransform
         if (grounded)
         {
             updateMoveSpeed(sprint, crouching);     //only accelerate or decelerate when grounded
-            moveDirection = new Vector3(input.x, -antiBumpFactor, input.y);      //anti bump factor stops the player slowing down when they hit ledges
+            moveDirection = new Vector3(input.x, 0, input.y);      
             moveDirection = transform.TransformDirection(moveDirection) * currentMoveSpeed;
+            moveDirection.y = -antiBumpFactor;
             UpdateJump();
         }
         else           //in air controls
@@ -117,6 +124,8 @@ public class CharacterMovement : InterpolateTransform
             jumpedDir = Vector3.ClampMagnitude(jumpedDir, jumpPower);
             moveDirection.x = jumpedDir.x;
             moveDirection.z = jumpedDir.z;
+            if (controller.hasObjectInfront(wallJumpDistance))
+                UpdateJump();
         }
         //add gravity
         moveDirection.y -= gravity * Time.deltaTime;
@@ -158,16 +167,21 @@ public class CharacterMovement : InterpolateTransform
 
     }
     //dismount move
-    public void Move(Vector2 input)
+    public void Move(Vector2 input, float yVector)
     {
-        moveDirection = new Vector3(input.x, -antiBumpFactor, input.y);      
-        moveDirection = transform.TransformDirection(moveDirection) * (targetMoveSpeed + 2f);
-        moveDirection.y -= gravity * Time.deltaTime;
+        Vector3 move = new Vector3(input.x, 0, input.y) * currentMoveSpeed * grappleSpeed;
+        move.y = yVector;
+
+        moveDirection.x = move.x;
+        moveDirection.z = move.z;
+        moveDirection.y = moveDirection.y + move.y - gravity * Time.deltaTime;
 
         //move + update grounded state
         grounded = (characterController.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
+        if (grounded)
+            cumulativeGravity = 0f;
     }
-    //vault
+    //vault + grapple
     public void Move(Vector3 direction, bool slow)
     {
         if (slow)
@@ -175,7 +189,16 @@ public class CharacterMovement : InterpolateTransform
             targetMoveSpeed = runSpeed;
             currentMoveSpeed = targetMoveSpeed;
         }
-        moveDirection = direction * (currentMoveSpeed + 2f);
+        else
+        {
+            direction.x *= grappleSpeed;      //apply grapple speed increase
+            direction.z *= grappleSpeed;
+        }
+
+        updateMoveSpeed(true, false);
+        moveDirection = direction * currentMoveSpeed;
+        Debug.Log(moveDirection.y);
+
         grounded = (characterController.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
     }
 

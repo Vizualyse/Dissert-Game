@@ -9,6 +9,8 @@ public class VaultMove : MovementInterface
     Vector3 vaultDir;
 
     GameObject vaultHelper;
+    float duration = 0;
+    float maxDuration = 0.75f;
 
     void CreateVaultHelper()
     {
@@ -26,8 +28,25 @@ public class VaultMove : MovementInterface
         CreateVaultHelper();
     }
 
+    public void Dismount()
+    {
+        if (player.state == changeTo)
+        {
+            duration += Time.deltaTime;
+            if (duration > maxDuration)
+            {
+                duration = 0;
+                player.ChangeState(State.DISMOUNTING);
+            }
+        }
+        else
+            duration = 0;
+    }
+
     public override void Movement()
     {
+        Dismount();     //forces the player off if they've been vaulting too long
+
         Vector3 dir = vaultOver - transform.position;
         Vector3 localPos = vaultHelper.transform.InverseTransformPoint(transform.position);
         Vector3 move = (vaultDir + (Vector3.up * -(localPos.z - player.info.radius) * player.info.height)).normalized;
@@ -42,38 +61,17 @@ public class VaultMove : MovementInterface
         movement.Move(move, true);
     }
 
-    private bool hasObjectInfront(float distance)
-    {
-        Vector3 top = transform.position + (transform.forward * 0.25f);
-        Vector3 bottom = top - (transform.up * player.info.height);
-        RaycastHit[] raycasts = Physics.CapsuleCastAll(top, bottom, 0.25f, transform.forward, distance);
-        float playerMidY;
-
-        if (movement.grounded)
-            playerMidY = transform.position.y + player.info.halfheight;
-        else
-            playerMidY = transform.position.y;
-
-
-        foreach (RaycastHit ray in raycasts)
-        {
-            float y = ray.collider.bounds.max.y;
-            if(y > playerMidY)
-                return true;
-        }    
-
-        return false;
-    }
 
     public override void Check(bool canInteract)
     {
         if (!canInteract) return;
         if (player.state == changeTo) return;
-
+        if (playerInput.input.y < 0) return; //no vault if the player is trying to move backwards
+        
         float movementAdjust = (Vector3.ClampMagnitude(movement.characterController.velocity, 16f).magnitude / 16f);
-        float checkDis = player.info.radius + movementAdjust;
+        float checkDis = player.info.radius + movementAdjust/2;
 
-        if (hasObjectInfront(checkDis))
+        if (player.hasObjectInfront(checkDis))
         {
             if (Physics.SphereCast(transform.position + (transform.forward * (player.info.radius - 0.25f)), 0.25f, transform.forward, out var sphereHit, checkDis))
             {

@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum State { IDLE, WALKING, CROUCHING, RUNNING, SLIDING, WALLRUN, DISMOUNTING, VAULTING }
+public enum State { IDLE, WALKING, CROUCHING, RUNNING, SLIDING, WALLRUN, DISMOUNTING, VAULTING, GRAPPLING}
 public class CustomCharacterController : MonoBehaviour
 {
     public State state;
@@ -130,11 +130,26 @@ public class CustomCharacterController : MonoBehaviour
                 if (!Uncrouch())
                     return; //if you cant uncrouch abort jump attempt
             }
-
             characterMovement.Jump(Vector3.up, 1f);
             characterInput.ResetJump();
         }
+        
+        if (hasObjectInfront(characterMovement.wallJumpDistance) && characterInput.Jump())
+        {
+            if (state == State.CROUCHING)
+            {
+                if (!Uncrouch())
+                    return; 
+            }
+            characterInput.ResetJump();
+            Vector3 trajectory = getTrajectory;
+            trajectory = -(trajectory) + transform.position;     //inverts the trajectory
+            trajectory = Vector3.ClampMagnitude(trajectory, 1f); trajectory.y = 0;
+            trajectory = -2 * transform.forward;
 
+            characterMovement.Jump(Vector3.up + trajectory, 1f);
+        }
+        
         characterMovement.Move(characterInput.input, alreadySprinting(), isCrouching());
 
     }
@@ -153,6 +168,9 @@ public class CustomCharacterController : MonoBehaviour
     {
         return (state == State.CROUCHING);
     }
+
+    public Vector3 getTrajectory
+    {  get { return collisionDetection.trajectory - transform.position; } }
 
     void CheckCrouching()
     {
@@ -206,6 +224,25 @@ public class CustomCharacterController : MonoBehaviour
         }
         else
             speedCounter++;
+    }
+    public bool hasObjectInfront(float distance)
+    {
+        Vector3 top = transform.position + (transform.forward * 0.25f);
+        Vector3 bottom = top - (transform.up * info.height);
+        RaycastHit[] raycasts = Physics.CapsuleCastAll(top, bottom, 0.25f, transform.forward, distance);
+        float playerMidY = transform.position.y + info.height * 0.125f;
+
+        foreach (RaycastHit ray in raycasts)
+        {
+            if (ray.transform.name != "Player" && ray.transform.name != "Collider")
+            {
+                float y = ray.collider.bounds.max.y;
+                if (y > playerMidY)
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     private void getWallContactPoints(int dir, out Vector3 side, out Vector3 topForward, out Vector3 topBackward, out Vector3 bottomForward, out Vector3 bottomBackward)
