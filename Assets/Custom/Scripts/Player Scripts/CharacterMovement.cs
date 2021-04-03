@@ -111,9 +111,8 @@ public class CharacterMovement : InterpolateTransform
         if (grounded)
         {
             updateMoveSpeed(sprint, crouching);     //only accelerate or decelerate when grounded
-            moveDirection = new Vector3(input.x, 0, input.y);      
+            moveDirection = new Vector3(input.x, -antiBumpFactor, input.y);      
             moveDirection = transform.TransformDirection(moveDirection) * currentMoveSpeed;
-            moveDirection.y = -antiBumpFactor;
             UpdateJump();
         }
         else           //in air controls
@@ -124,7 +123,7 @@ public class CharacterMovement : InterpolateTransform
             jumpedDir = Vector3.ClampMagnitude(jumpedDir, jumpPower);
             moveDirection.x = jumpedDir.x;
             moveDirection.z = jumpedDir.z;
-            if (controller.hasObjectInfront(wallJumpDistance))
+            if (controller.hasObjectInfront(wallJumpDistance, out bool wall) && wall)   //for the wall jump
                 UpdateJump();
         }
         //add gravity
@@ -160,7 +159,7 @@ public class CharacterMovement : InterpolateTransform
             targetMoveSpeed += camera.transform.localRotation.x * wallAccel * Time.deltaTime;
 
         currentMoveSpeed = targetMoveSpeed;
-        moveDirection = direction * currentMoveSpeed;
+        moveDirection = direction * (currentMoveSpeed + 2f);
         UpdateJump();
 
         grounded = (characterController.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
@@ -174,6 +173,15 @@ public class CharacterMovement : InterpolateTransform
 
         moveDirection.x = move.x;
         moveDirection.z = move.z;
+
+        
+        /*
+        if(characterController.velocity.y > 0 && characterController.velocity.y < 1f) //if the player collides with something vertically they should lose upwards momentum
+        {
+            Debug.Log("true");
+            moveDirection.y = 0f;
+        }*/
+
         moveDirection.y = moveDirection.y + move.y - gravity * Time.deltaTime;
 
         //move + update grounded state
@@ -197,7 +205,7 @@ public class CharacterMovement : InterpolateTransform
 
         updateMoveSpeed(true, false);
         moveDirection = direction * currentMoveSpeed;
-        Debug.Log(moveDirection.y);
+        //Debug.Log(moveDirection.y);
 
         grounded = (characterController.Move(moveDirection * Time.deltaTime) & CollisionFlags.Below) != 0;
     }

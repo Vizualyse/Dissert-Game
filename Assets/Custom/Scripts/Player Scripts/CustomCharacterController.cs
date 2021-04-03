@@ -134,7 +134,7 @@ public class CustomCharacterController : MonoBehaviour
             characterInput.ResetJump();
         }
         
-        if (hasObjectInfront(characterMovement.wallJumpDistance) && characterInput.Jump())
+        if (hasObjectInfront(characterMovement.wallJumpDistance, out bool flat) && characterInput.Jump() && flat)
         {
             if (state == State.CROUCHING)
             {
@@ -225,12 +225,36 @@ public class CustomCharacterController : MonoBehaviour
         else
             speedCounter++;
     }
+
     public bool hasObjectInfront(float distance)
+    {
+        return hasObjectInfront(distance, out bool ignore);
+    }
+
+    public bool hasObjectInfront(float distance, out bool flatWall)
     {
         Vector3 top = transform.position + (transform.forward * 0.25f);
         Vector3 bottom = top - (transform.up * info.height);
         RaycastHit[] raycasts = Physics.CapsuleCastAll(top, bottom, 0.25f, transform.forward, distance);
         float playerMidY = transform.position.y + info.height * 0.125f;
+
+        int layermask = ~LayerMask.GetMask("Player");//everything but the player
+
+        Physics.Raycast(transform.position, -transform.up, out RaycastHit floorRay, 5f, layermask);
+        Physics.Raycast(transform.position, transform.forward, out RaycastHit wallRay, 5f, layermask);
+        try 
+        {
+            if (floorRay.collider != null)
+                flatWall = !floorRay.collider.name.Equals(wallRay.collider.name);
+            else if (wallRay.collider == null)
+                flatWall = false;
+            else
+                flatWall = true;
+        }
+        catch
+        {
+            flatWall = false;
+        }
 
         foreach (RaycastHit ray in raycasts)
         {

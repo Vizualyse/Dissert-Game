@@ -66,6 +66,7 @@ public class VaultMove : MovementInterface
     {
         if (!canInteract) return;
         if (player.state == changeTo) return;
+        if (player.state == State.SLIDING) return;
         if (playerInput.input.y < 0) return; //no vault if the player is trying to move backwards
         
         float movementAdjust = (Vector3.ClampMagnitude(movement.characterController.velocity, 16f).magnitude / 16f);

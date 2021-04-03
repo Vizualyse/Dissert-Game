@@ -15,15 +15,10 @@ public class DismountingMove : MovementInterface
 
     public override void Movement()
     {
-        try{GetComponent<GrappleMove>().Check(true);} catch { Debug.Log("Grapple Component not found"); }
+        try{GetComponent<GrappleMove>().Check(true); } catch { Debug.Log("Grapple Component not found"); }
+        try { GetComponent<WallRun>().Check(true);  } catch { Debug.Log("Wallrun Component not found"); }
 
-        if (player.hasWallToSide(-1) || player.hasWallToSide(1))
-        {
-            player.ChangeState(State.WALLRUN);
-            trajectory = Vector2.zero;
-            return;
-        }
-        else if (player.state == changeTo && movement.grounded)
+        if (player.state == changeTo && movement.grounded)
         { 
             player.ChangeState(State.WALKING);
             trajectory = Vector2.zero;
@@ -33,6 +28,7 @@ public class DismountingMove : MovementInterface
         {
             trajectory = new Vector2(player.getTrajectory.x, player.getTrajectory.z);
         }
+
 
         //movement.Move(playerInput.input);
         movement.Move(trajectory, yVector);

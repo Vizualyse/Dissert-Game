@@ -57,13 +57,18 @@ public class GrappleMove : MovementInterface
             move.x = 0;
             move.z = 0;
 
+            //horizontal input
+            move.x += playerInput.input.x;
+            move.z += playerInput.input.y >= 0 ? 1f : playerInput.input.y * 0.10f;
+
+            move = playerTransform.TransformDirection(move);
+
             //vertical input
-            /*
-            float y = cam.localEulerAngles.x;
-            if (y > 90) y -= 360;
-            y /= 90;
-            move.y = y * verticalSpeed;
-            */
+
+            Vector3 horizontalPullDir = new Vector3((grapplePoint - playerTransform.position).x, 0, (grapplePoint - playerTransform.position).z);
+            horizontalPullDir.x = horizontalPullDir.x > 0.1f ? horizontalPullDir.x : 0f;    //without this it jitters at the bottom
+            horizontalPullDir.z = horizontalPullDir.z > 0.1f ? horizontalPullDir.z : 0f;
+            move += horizontalPullDir.normalized * .45f;
             if (Input.GetButton("Jump"))
             {
                 move.y += verticalSpeed * Time.deltaTime;
@@ -72,12 +77,6 @@ public class GrappleMove : MovementInterface
             {
                 move.y += -verticalSpeed * Time.deltaTime;
             }
-
-            //horizontal input
-            move.x = playerInput.input.x;
-            move.z = playerInput.input.y;
-
-            move = playerTransform.TransformDirection(move);
 
             //tether input
             RaycastHit check;
