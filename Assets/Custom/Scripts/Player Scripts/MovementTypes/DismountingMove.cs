@@ -15,8 +15,10 @@ public class DismountingMove : MovementInterface
 
     public override void Movement()
     {
-        try{GetComponent<GrappleMove>().Check(true); } catch { Debug.Log("Grapple Component not found"); }
-        try { GetComponent<WallRun>().Check(true);  } catch { Debug.Log("Wallrun Component not found"); }
+        try {GetComponent<GrappleMove>().Check(true); } catch { Debug.Log("Grapple Component not found"); }
+        try { GetComponent<WallRun>().Check(true); } catch { Debug.Log("Wallrun Component not found"); }
+        try { GetComponent<SlideMove>().Check(true); } catch { Debug.Log("Slide Component not found"); }
+        try { GetComponent<VaultMove>().Check(true); } catch { Debug.Log("Vault Component not found"); }
 
         if (player.state == changeTo && movement.grounded)
         { 

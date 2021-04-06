@@ -34,7 +34,6 @@ public class CustomCharacterController : MonoBehaviour
     {
         characterInput = GetComponent<CharacterInput>();
         characterMovement = GetComponent<CharacterMovement>();
-        characterMovement.AddToReset(() => { state = State.WALKING; });
 
         lastPos = this.transform.position;
         collisionDetection = GetComponentInChildren<CollisionDetection>();
@@ -123,32 +122,38 @@ public class CustomCharacterController : MonoBehaviour
         if(isSprinting() && isCrouching())
             Uncrouch();
 
-        if(characterMovement.grounded && characterInput.Jump())
+        if(characterInput.Jump())
         {
-            if(state == State.CROUCHING)
+            if (characterMovement.grounded)
             {
-                if (!Uncrouch())
-                    return; //if you cant uncrouch abort jump attempt
+                if (state == State.CROUCHING)
+                {
+                    if (!Uncrouch())
+                        return; //if you cant uncrouch abort jump attempt
+                }
+                characterMovement.Jump(Vector3.up, 1f);
+                characterInput.ResetJump();
             }
-            characterMovement.Jump(Vector3.up, 1f);
-            characterInput.ResetJump();
+            else if (hasObjectInfront(characterMovement.wallJumpDistance, out bool flat) && flat)
+            {
+                if (state == State.CROUCHING)
+                {
+                    if (!Uncrouch())
+                        return;
+                }
+                
+                Vector3 trajectory = getTrajectory;
+                trajectory = -(trajectory) + transform.position;     //inverts the trajectory
+                trajectory = Vector3.ClampMagnitude(trajectory, 1f); trajectory.y = 0;
+                trajectory = -2 * transform.forward;
+
+                characterMovement.Jump(Vector3.up + trajectory, 1f);
+                characterInput.ResetJump();
+            }
         }
         
-        if (hasObjectInfront(characterMovement.wallJumpDistance, out bool flat) && characterInput.Jump() && flat)
-        {
-            if (state == State.CROUCHING)
-            {
-                if (!Uncrouch())
-                    return; 
-            }
-            characterInput.ResetJump();
-            Vector3 trajectory = getTrajectory;
-            trajectory = -(trajectory) + transform.position;     //inverts the trajectory
-            trajectory = Vector3.ClampMagnitude(trajectory, 1f); trajectory.y = 0;
-            trajectory = -2 * transform.forward;
-
-            characterMovement.Jump(Vector3.up + trajectory, 1f);
-        }
+        
+        
         
         characterMovement.Move(characterInput.input, alreadySprinting(), isCrouching());
 

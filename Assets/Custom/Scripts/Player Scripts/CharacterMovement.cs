@@ -46,7 +46,6 @@ public class CharacterMovement : InterpolateTransform
     [Header("Game Objets")]
     public CharacterController characterController;
     CustomCharacterController controller;
-    UnityEvent onReset = new UnityEvent();
 
     [Header("Debug")]
     [SerializeField]
@@ -58,27 +57,6 @@ public class CharacterMovement : InterpolateTransform
     private float lastYPos = 0f;
 
     public float cumulativeGravity = 0f;
-
-    public void AddToReset(UnityAction call)
-    {
-        onReset.AddListener(call);
-    }
-
-    public override void ResetPositionTo(Vector3 resetTo)
-    {
-        characterController.enabled = false;
-        StartCoroutine(forcePosition());
-        IEnumerator forcePosition()
-        {
-            //Reset position to 'resetTo'
-            transform.position = resetTo;
-            //Remove old interpolation
-            ForgetPreviousTransforms();
-            yield return new WaitForEndOfFrame();
-        }
-        characterController.enabled = true;
-        onReset.Invoke();
-    }
 
     // Start is called before the first frame update
     public override void OnEnable()

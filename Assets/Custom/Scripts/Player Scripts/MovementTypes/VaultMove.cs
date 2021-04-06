@@ -61,7 +61,6 @@ public class VaultMove : MovementInterface
         movement.Move(move, true);
     }
 
-
     public override void Check(bool canInteract)
     {
         if (!canInteract) return;
